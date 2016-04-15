@@ -1,8 +1,12 @@
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Scanner;
 
 import javax.swing.text.html.HTMLDocument.Iterator;
@@ -54,10 +58,11 @@ public class ID3 {
         }
     }
 	
-	public static void parseIngredients(String file){
+	public static void parseIngredients(String filename) throws FileNotFoundException{
+		File file = new File(filename);
 		Scanner scanner = new Scanner(file);
 
-	    while(scanner.hasNext()){
+	    while(scanner.hasNextLine()){
 	        ingredients.add(scanner.nextLine().trim().replace("\"",""));
 	    }
 	}
@@ -72,15 +77,16 @@ public class ID3 {
 		Node root = new Node();
 		String cuisine = isSameCuisine(recipes);
 		if (cuisine!=null){
+			System.out.println(cuisine);
 			root.attribute = cuisine;
 			return root;
 		}
 		if (ingredients.isEmpty()){
 			//if number of predicting attributes is empty, find most common cuisine
-			root.attribute = mostCommonCuisine(recipes);
+			//root.attribute = mostCommonCuisine(recipes);
 			return root;
 		} else {
-			root.attribute = bestEntropyGain(ingredients, recipes);
+			root.attribute = bestInfoGain(ingredients, recipes);
 
 			HashSet<Recipe> yesRecipes = getSubset(true, root.attribute, recipes);
 			if (yesRecipes.isEmpty()){
@@ -134,16 +140,89 @@ public class ID3 {
 		return cuisine;
 	}
 	
-	public static String bestEntropyGain(HashSet<String> ingredients, HashSet<Recipe> recipes){
-		return null;
+	public static String bestInfoGain(HashSet<String> ingredients, HashSet<Recipe> recipes){
+		double entropy = getEntropy(recipes);
+		double maxGain = Double.MIN_VALUE;
+		String bestIngredient = "";
+		for(String ingredient : ingredients) {
+			HashSet<Recipe> yesRecipes = getSubset(true, ingredient, recipes);
+			HashSet<Recipe> noRecipes = getSubset(false, ingredient, recipes);
+			double yesEntropy = getEntropy(yesRecipes);
+			double noEntropy = getEntropy(noRecipes);
+			double gain = entropy - (((yesRecipes.size() / recipes.size()) * yesEntropy) +
+					((noRecipes.size() / recipes.size()) * noEntropy));
+			if(gain > maxGain) {
+				maxGain = gain;
+				bestIngredient = ingredient;
+			}
+		}
+		return bestIngredient;
+	}
+	
+	public static double getEntropy(HashSet<Recipe> recipes) {
+		HashMap<String, Double> recipeCount = getRecipeCount(recipes);
+		double entropy = 0;
+		for(HashMap.Entry<String, Double> entry: recipeCount.entrySet()) {
+			double p_i = entry.getValue();
+			entropy += p_i * Math.log(p_i) / Math.log(2);
+		}
+		return -1.0 * entropy;
+	}
+	
+	public static HashMap<String, Double> getRecipeCount(HashSet<Recipe> recipes) {
+		HashMap<String, Double> recipeCount = new HashMap<String, Double>();
+		for (Recipe recipe: recipes){
+			if (!recipeCount.containsKey(recipe.cuisine)){
+				recipeCount.put(recipe.cuisine, 1.0);
+			} else {
+				recipeCount.put(recipe.cuisine, recipeCount.get(recipe.cuisine)+1);
+			}
+		}
+		return recipeCount;
 	}
 	
 	private static HashSet<Recipe> getSubset(boolean b, String attribute,
-			HashSet<Recipe> recipes2) {
-		// TODO Auto-generated method stub
-		return null;
+			HashSet<Recipe> recipes) {
+		HashSet<Recipe> subSet = new HashSet<Recipe>();
+		if(b) {
+			for(Recipe recipe : recipes) {
+				if(recipe.ingredients.contains(attribute)) {
+					subSet.add(recipe);
+				}
+			}
+		}
+		if(!b) {
+			for(Recipe recipe : recipes) {
+				if(!recipe.ingredients.contains(attribute)) {
+					subSet.add(recipe);
+				}
+			}
+		}
+		return subSet;
 	}
 
+	private static void printTree(Node root) {
+		Queue<Node> q = new LinkedList<Node>();
+		if(root == null)
+			return;
+		q.add(root);
+		while(!q.isEmpty()) {
+			Node n = (Node) q.remove();
+			System.out.println(" " + n.attribute);
+			if(n.yes != null)
+				q.add(n.yes);
+			if(n.no != null)
+				q.add(n.no);
+			
+		}
+	}
+	
+	public static void main(String[] args) throws FileNotFoundException {
+		parseRecipes("training_data.csv");
+		parseIngredients("ingredients.txt");
+		Node root = buildTree(ingredients, recipes);
+		printTree(root);
+	}
 	
 //	public static String getTargetIngredient(HashSet<String> ingredients, HashSet<Recipe> recipes ){
 //		//calculate entropy

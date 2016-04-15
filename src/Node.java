@@ -7,12 +7,12 @@ public class Node {
 	
 	public Node(){
 		this.attribute = null;
-		this.yes = new Node();
-		this.no = new Node();
+		this.yes = null;
+		this.no = null;
 	}
 	public Node(String attribute){
 		this.attribute = attribute;
-		this.yes = new Node();
-		this.no = new Node();
+		this.yes = null;
+		this.no = null;
 	}
 }
