@@ -7,10 +7,12 @@ public class Recipe {
 	
 	public String cuisine;
 	public ArrayList<String> ingredients;
+	public int id;
 	
 	public Recipe(){
 		this.cuisine = null;
 		this.ingredients = new ArrayList<String>();
+		this.id = 0;
 	}
 
 
